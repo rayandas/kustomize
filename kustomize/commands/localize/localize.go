@@ -4,10 +4,14 @@
 package localize
 
 import (
+	"go/build"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 	lclzr "sigs.k8s.io/kustomize/api/krusty/localizer"
+	"sigs.k8s.io/kustomize/kustomize/v5/commands/build"
+	"sigs.k8s.io/kustomize/kustomize/v5/commands/internal/kustfile"
 	"sigs.k8s.io/kustomize/kyaml/errors"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
@@ -21,6 +25,7 @@ type arguments struct {
 
 type flags struct {
 	scope string
+	noVerify bool
 }
 
 // NewCmdLocalize returns a new localize command.
@@ -62,6 +67,26 @@ kustomize localize https://github.com/kubernetes-sigs/kustomize//api/krusty/test
 			if err != nil {
 				return errors.Wrap(err)
 			}
+
+			// Run kustomize build and compare output if noVerify is false
+			if !f.noVerify {
+				// Run kustomize build on the target
+				targetBuild, err := build.NewCmdBuild(fs, build.MakeHelp("kustomize", "build"), os.Stdout).RunE(build.NewCmdBuild(fs, build.MakeHelp("kustomize", "build"), os.Stdout), []string{args.target})				
+				if err != nil {
+					return errors.Wrap(err)
+				}
+
+				// Run kustomize build on the localized copy
+				localizedBuild, err := 
+				if err != nil {
+					return errors.Wrap(err)
+				}
+
+				// Compare the output of the two builds
+				if targetBuild != localizedBuild {
+					return errors.Errorf("kustomize build output for target %s and localized copy %s do not match", args.target, dst)
+				}
+			}
 			log.Printf("SUCCESS: localized %q to directory %s\n", args.target, dst)
 			return nil
 		},
@@ -74,6 +99,12 @@ kustomize localize https://github.com/kubernetes-sigs/kustomize//api/krusty/test
 Cannot specify for remote targets, as scope is by default the containing repo.
 If not specified for local target, scope defaults to target.
 `)
+
+	cmd.Flags().BoolVar(&f.noVerify,
+		"no-verify",
+		false,
+		"Skip verification by not running kustomize build.")
+
 	return cmd
 }
 
